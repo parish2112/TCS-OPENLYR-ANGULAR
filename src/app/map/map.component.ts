@@ -1,17 +1,30 @@
-import { Component } from '@angular/core';
+import { Component, Input, Output, EventEmitter } from '@angular/core';
 import * as ol from 'ol';
 import { Tile as TileLayer } from 'ol/layer';
 import { OSM } from 'ol/source';
 import { View } from 'ol';
+import { fromLonLat } from 'ol/proj';
+import Feature from 'ol/Feature';
+import Point from 'ol/geom/Point';
+import { Icon, Style } from 'ol/style';
+import VectorLayer from 'ol/layer/Vector';
+import VectorSource from 'ol/source/Vector';
 
 @Component({
   selector: 'app-map',
-  standalone: true,  // Standalone component
+  standalone: true,
   templateUrl: './map.component.html',
   styleUrls: ['./map.component.scss']
 })
 export class MapComponent {
   private map: ol.Map | undefined;
+  @Input() initialZoom: number = 5;
+  @Input() centerCoordinates: [number, number] = [77.1025, 28.7041]; 
+
+  @Output() zoomLevelChanged = new EventEmitter<number>();
+
+  zoomLevel: number = this.initialZoom;
+  zoomPercentage: string = `${this.zoomLevel}%`;
 
   ngOnInit(): void {
     this.initMap();
@@ -24,20 +37,73 @@ export class MapComponent {
   }
 
   private initMap(): void {
-    // Coordinates for the center of India (around New Delhi)
-    const indiaCenter = ([77.1025, 28.7041]); // Transform to EPSG:3857
+    const center = fromLonLat(this.centerCoordinates);
+
+    const view = new View({
+      center: center,
+      zoom: this.initialZoom
+    });
+
+    const vectorSource = new VectorSource();
+
+    const markers = [
+      { lon: 77.1025, lat: 28.7041, name: 'Delhi' },
+      { lon: 88.3639, lat: 22.5726, name: 'Kolkata' },
+      { lon: 72.8777, lat: 19.0760, name: 'Mumbai' },
+      { lon: 80.2785, lat: 13.0827, name: 'Chennai' },
+      { lon: 75.8577, lat: 26.9124, name: 'Jaipur' }
+    ];
+
+    markers.forEach(marker => {
+      const feature = new Feature({
+        geometry: new Point(fromLonLat([marker.lon, marker.lat])),
+        name: marker.name
+      });
+
+      feature.setStyle(new Style({
+        image: new Icon({
+          src: 'https://openlayers.org/en/v4.6.5/examples/data/icon.png', 
+          scale: 1.1  
+        })
+      }));
+
+      vectorSource.addFeature(feature); 
+    });
+
+    const vectorLayer = new VectorLayer({
+      source: vectorSource
+    });
 
     this.map = new ol.Map({
       target: 'map',
       layers: [
         new TileLayer({
           source: new OSM()
-        })
+        }),
+        vectorLayer  
       ],
-      view: new View({
-        center: indiaCenter,  // Use the transformed coordinates 
-        zoom: 8  // Adjust zoom level to fit India on the map
-      })
+      view: view,
+      controls: []  
     });
+
+    view.on('change:resolution', () => {
+      this.zoomLevel = view.getZoom() || this.zoomLevel;
+      this.zoomPercentage = `${Math.round(this.zoomLevel * 100 / 20)}%`;
+      this.zoomLevelChanged.emit(this.zoomLevel);
+    });
+  }
+
+  zoomIn(): void {
+    const view = this.map?.getView();
+    if (view) {
+      view.setZoom((view.getZoom() || 0) + 1);
+    }
+  }
+
+  zoomOut(): void {
+    const view = this.map?.getView();
+    if (view) {
+      view.setZoom((view.getZoom() || 0) - 1);
+    }
   }
 }

@@ -1,5 +1,5 @@
-<!-- app.component.html -->
-<div>
-  <h1>OpenLayers Map Integration</h1>
-  <app-map></app-map>  <!-- This will render the MapComponent -->
-</div>
+<app-map
+  [initialZoom]="initialZoom"
+  [centerCoordinates]="indiaCenter"
+  (zoomLevelChanged)="onZoomLevelChange($event)">
+</app-map>
