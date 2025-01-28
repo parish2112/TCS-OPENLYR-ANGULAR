@@ -35,7 +35,7 @@ export class MapComponent {
         })
       ],
       view: new View({
-        center: indiaCenter,  // Use the transformed coordinates
+        center: indiaCenter,  // Use the transformed coordinates 
         zoom: 8  // Adjust zoom level to fit India on the map
       })
     });
