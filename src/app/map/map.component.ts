@@ -1,7 +1,7 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import * as ol from 'ol';
 import { Tile as TileLayer } from 'ol/layer';
-import { OSM } from 'ol/source';
+import { OSM, TileWMS } from 'ol/source';
 import { View } from 'ol';
 import { fromLonLat } from 'ol/proj';
 import Feature from 'ol/Feature';
@@ -19,7 +19,7 @@ import VectorSource from 'ol/source/Vector';
 export class MapComponent {
   private map: ol.Map | undefined;
   @Input() initialZoom: number = 5;
-  @Input() centerCoordinates: [number, number] = [77.1025, 28.7041]; 
+  @Input() centerCoordinates: [number, number] = [77.1025, 28.7041];
 
   @Output() zoomLevelChanged = new EventEmitter<number>();
 
@@ -44,6 +44,25 @@ export class MapComponent {
       zoom: this.initialZoom
     });
 
+    // Base OSM Layer
+    const osmLayer = new TileLayer({
+      source: new OSM()
+    });
+
+    // ISRO Bhuvan WMS Layer (for politically accurate India map)
+    const bhuvanLayer = new TileLayer({
+      source: new TileWMS({
+        url: 'https://bhuvan-vec2.nrsc.gov.in/bhuvan/wms', // ISRO WMS Service
+        params: {
+          'LAYERS': 'india_boundaries', // Adjust based on available layers
+          'TILED': true,
+          'FORMAT': 'image/png',
+          'TRANSPARENT': true
+        }
+      })
+    });
+
+    // Vector source for markers
     const vectorSource = new VectorSource();
 
     const markers = [
@@ -62,30 +81,28 @@ export class MapComponent {
 
       feature.setStyle(new Style({
         image: new Icon({
-          src: 'https://openlayers.org/en/v4.6.5/examples/data/icon.png', 
-          scale: 1.1  
+          src: 'https://openlayers.org/en/v4.6.5/examples/data/icon.png',
+          scale: 1.1
         })
       }));
 
-      vectorSource.addFeature(feature); 
+      vectorSource.addFeature(feature);
     });
 
+    // Vector layer for markers
     const vectorLayer = new VectorLayer({
       source: vectorSource
     });
 
+    // Initialize the map
     this.map = new ol.Map({
       target: 'map',
-      layers: [
-        new TileLayer({
-          source: new OSM()
-        }),
-        vectorLayer  
-      ],
+      layers: [osmLayer, bhuvanLayer, vectorLayer], // Added Bhuvan WMS layer
       view: view,
-      controls: []  
+      controls: []
     });
 
+    // Update zoom level percentage
     view.on('change:resolution', () => {
       this.zoomLevel = view.getZoom() || this.zoomLevel;
       this.zoomPercentage = `${Math.round(this.zoomLevel * 100 / 20)}%`;
